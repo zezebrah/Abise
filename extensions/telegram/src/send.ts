@@ -110,6 +110,14 @@ type TelegramSendResult = {
 type TelegramMessageLike = {
   message_id?: number;
   chat?: { id?: string | number };
+  poll?: { id?: string };
+};
+
+type TelegramForumTopicResult = {
+  message_thread_id: number;
+  name?: string;
+  icon_color?: number;
+  icon_custom_emoji_id?: string;
 };
 
 type TelegramReactionOpts = {
@@ -1620,7 +1628,7 @@ export async function sendPollTelegram(
     ...(opts.silent === true ? { disable_notification: true } : {}),
   };
 
-  const result = await withTelegramThreadFallback(
+  const result = await withTelegramThreadFallback<TelegramMessageLike, TelegramSendPollParams>(
     pollParams,
     "poll",
     opts.verbose,
@@ -1628,7 +1636,7 @@ export async function sendPollTelegram(
       requestWithChatNotFound(
         () => api.sendPoll(chatId, normalizedPoll.question, pollOptions, effectiveParams),
         label,
-      ),
+      ) as Promise<TelegramMessageLike>,
   );
 
   const messageId = resolveTelegramMessageIdOrThrow(result, "poll send");
@@ -1717,10 +1725,10 @@ export async function createForumTopicTelegram(
   }
 
   const hasExtra = Object.keys(extra).length > 0;
-  const result = await requestWithDiag(
+  const result = (await requestWithDiag(
     () => api.createForumTopic(normalizedChatId, trimmedName, hasExtra ? extra : undefined),
     "createForumTopic",
-  );
+  )) as TelegramForumTopicResult;
 
   const topicId = result.message_thread_id;
 
